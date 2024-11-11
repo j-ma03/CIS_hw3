@@ -38,7 +38,9 @@ class Triangle():
         if len(points.shape) != 2 or points.shape[1] != 3:
             raise ValueError('Points should be an Nx3 matrix!')
 
-        # Construct 3x3 matrix of vertices
+        # Construct 3x3 matrix of vertices in Barycentric form
+        # Approach based on Dr. Taylor's slides on finding closest points:
+        # https://ciis.lcsr.jhu.edu/lib/exe/fetch.php?media=courses:455-655:lectures:finding_point-pairs.pdf
         A = np.array([
             self.v1,
             self.v2,
