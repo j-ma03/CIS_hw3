@@ -1,25 +1,23 @@
 import unittest
 
 from utils.dataloader import *
-from utils.icp import *
+# from utils.icp import *
+from utils.meshgrid import Triangle
 import numpy as np
 
-class TestClosestPoint(unittest.TestCase):
-    def generate_triangle():
-        return np.random.rand(3, 3)
-    
-    def generate_point_cloud():
-        return np.random.rand(10, 3)
-    
+class TestClosestPoint(unittest.TestCase):    
     def test_closest_point(self):
         # generate 3 random points that make up a triangle
-        # generate random point cloud of 10 points
-        # find ground truth closest point
-        # find experimental closest point
+        # generate random point
+        # find ground truth closest point on triangle
+        # find experimental closest point on triangle
         # compare the two
 
-        triangle = self.generate_triangle()
-        pt_cloud = self.generate_point_cloud()
+        v1 = np.random.rand(3)
+        v2 = np.random.rand(3)
+        v3 = np.random.rand(3)
+
+        triangle = Triangle(v1, v2, v3)
 
         pass
 
