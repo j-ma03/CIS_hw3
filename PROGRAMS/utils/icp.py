@@ -2,6 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Tuple, Union
 from enum import Enum
+from meshgrid import Meshgrid
 
 class Matching(Enum):
     LINEAR = 1
@@ -17,19 +18,19 @@ class IterativeClosestPoint():
 
     def match(
         self,
-        pt_cloud_A: NDArray[np.float32],
-        pt_cloud_B: NDArray[np.float32]
+        pt_cloud: NDArray[np.float32],
+        meshgrid: Meshgrid
     ):
         """
-        Finds the closest point pairs given two point clouds
+        Finds the closest point pairs given a point cloud and meshgrid
         """
         if self.match_mode == Matching.LINEAR:
             return self._linear_match(pt_cloud_A, pt_cloud_B)
 
     def _linear_match(
         self,
-        pt_cloud_A: NDArray[np.float32],
-        pt_cloud_B: NDArray[np.float32]
+        pt_cloud: NDArray[np.float32],
+        meshgrid: Meshgrid
     ):
         for 
         pass

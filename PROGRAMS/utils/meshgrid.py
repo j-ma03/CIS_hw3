@@ -1,5 +1,43 @@
 import numpy as np
 from numpy.typing import NDArray
+from typing import List
+
+class BoundingBox():
+    def __init__(
+        self,
+        top_left: NDArray[np.float32],
+        bottom_right: NDArray[np.float32]
+    ):
+        """
+        Stores a bounding box by its top-left and bottom-right corners.
+        """
+
+        # Top-left coordinate should be a 3D vector of (x, y, z) coordinates
+        if len(top_left.shape) != 1 or top_left.shape[0] != 3:
+            raise ValueError('Top-left coordinate should be a 3D vector of (x, y, z) coordinates!')
+        
+        # Bottom-left coordinate should be a 3D vector of (x, y, z) coordinates
+        if len(bottom_right.shape) != 1 or bottom_right.shape[0] != 3:
+            raise ValueError('Bottom-right coordinate should be a 3D vector of (x, y, z) coordinates!')
+
+        # Stores the top left and bottom right corners of the bounding box
+        self.top_left: NDArray[np.float32] = top_left
+        self.bottom_right: NDArray[np.float32] = bottom_right
+
+    def overlaps_with(self, bounding_box: 'BoundingBox') -> bool:
+        """
+        Checks if the bounding box overlaps with another bounding box.
+        """
+
+        # Checks if the x-axis, y-axis, and z-axis overlaps
+        for i in range(3):
+            if self.bottom_right[i] < bounding_box.top_left[i] or \
+                bounding_box.bottom_right[i] < self.top_left[i]:
+                # One of the axes do not overlap
+                return False
+        
+        # All axes overlap
+        return True
 
 class Triangle():
     def __init__(
@@ -8,6 +46,10 @@ class Triangle():
         v2: NDArray[np.float32],
         v3: NDArray[np.float32],
     ):
+        """
+        Stores a triangle as a set of vertices.
+        """
+
         # Triangle vertices should be a 3D vector of (x, y, z) coordinates
         if len(v1.shape) != 1 or v1.shape[0] != 3:
             raise ValueError(f'Expected v1 to be a 3D vector of (x, y, z) coordinates but got {v1.shape}.')
@@ -22,6 +64,21 @@ class Triangle():
         self.v1 = v1
         self.v2 = v2
         self.v3 = v3
+
+    def bounding_box(self) -> NDArray[np.float32]:
+        """
+        Computes a bounding box for the triangle based on its vertices.
+        """
+
+        # Stack vertices into a 3x3 matrix
+        vertices = np.stack([self.v1, self.v2, self.v3], axis=0)
+
+        # Compute coordinates of the top-left and bottom-right corners 
+        # of the bounding box
+        top_left = np.min(vertices, axis=0)
+        bottom_right = np.max(vertices, axis=0)
+
+        return BoundingBox(top_left, bottom_right)
 
     def closest_distance_to(
         self,
@@ -123,10 +180,16 @@ class Meshgrid():
         vertices: NDArray[np.float32],
         triangle_indices: NDArray[np.float32]
     ) -> None:
+        """
+        Stores a meshgrid as a set of vertices and Triangles.
+        """
         
+        # Vertices should be an Nx3 matrix of (x, y, z) coordinates
         if len(vertices.shape) != 2 or vertices.shape[1] != 3:
             raise ValueError('Vertices should be provided as an Nx3 matrix!')
         
+        # Triangle indices should be a Tx3 matrix of indices cooresponding
+        # to the three vertices of the triangle
         if len(triangle_indices.shape) != 2 or triangle_indices.shape[1] != 3:
             raise ValueError('Triangle indices should be provided as a Tx3 matrix!')
 
@@ -134,7 +197,17 @@ class Meshgrid():
         self.vertices: NDArray[np.float32] = vertices
 
         # Save triangle vertex indices as a Tx3 matrix
-        triangle_indices: NDArray[np.float32] = triangle_indices
+        self.triangle_indices: NDArray[np.float32] = triangle_indices
+
+        # Save triangles as a list of Triangle objects
+        self.trangles: List[Triangle] = []
+
+        # Construct Triangles and add them to the list
+        for i in range(self.triangle_indices.shape[0]):
+            self.trangles.append(
+                Triangle(*self.triangle_indices[i])
+            )
+
 
 
 
