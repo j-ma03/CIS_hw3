@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import List
+from typing import List, Tuple, Iterator
 
 class BoundingBox():
     def __init__(
@@ -24,17 +24,33 @@ class BoundingBox():
         self.top_left: NDArray[np.float32] = top_left
         self.bottom_right: NDArray[np.float32] = bottom_right
 
-    def overlaps_with(self, bounding_box: 'BoundingBox') -> bool:
+    def contains(self, points: NDArray[np.float32]) -> NDArray[np.bool8]:
         """
-        Checks if the bounding box overlaps with another bounding box.
+        Determines whether points, given as an Nx3 matrix, are contained within 
+        or on the edge of the bounding box.
+        """
+
+        # Input should be an Nx3 matrix of points
+        if len(points.shape) != 2 or points.shape[1] != 3:
+            raise ValueError('Points should be an Nx3 matrix!')
+        
+        # Finds which points are between the minimum and maximum values
+        # for each coordinate axis
+        bounds = (self.top_left[None,] <= points) & (points <= self.bottom_right[None,])
+        bounds = np.all(bounds, axis=1)
+        
+        return bounds
+
+    def overlaps(self, bounding_box: 'BoundingBox') -> bool:
+        """
+        Determines if the bounding box overlaps with another bounding box.
         """
 
         # Checks if the x-axis, y-axis, and z-axis overlaps
-        for i in range(3):
-            if self.bottom_right[i] < bounding_box.top_left[i] or \
-                bounding_box.bottom_right[i] < self.top_left[i]:
-                # One of the axes do not overlap
-                return False
+        if (self.bottom_right < bounding_box.top_left).any() or \
+            (bounding_box.bottom_right < self.top_left).any():
+            # One of the axes do not overlap
+            return False
         
         # All axes overlap
         return True
@@ -65,7 +81,7 @@ class Triangle():
         self.v2 = v2
         self.v3 = v3
 
-    def bounding_box(self) -> NDArray[np.float32]:
+    def box(self) -> BoundingBox:
         """
         Computes a bounding box for the triangle based on its vertices.
         """
@@ -83,7 +99,7 @@ class Triangle():
     def closest_distance_to(
         self,
         points: NDArray[np.float32]
-    ) -> NDArray[np.float32]:
+    ) -> Tuple[NDArray[np.float32]]:
         """
         Computes the closest distance from each point in an Nx3 matrix
         to the triangle by solving a constrained least-squares problem.
@@ -208,7 +224,14 @@ class Meshgrid():
                 Triangle(*self.triangle_indices[i])
             )
 
+    def __iter__(self) -> Iterator[Triangle]:
+        """
+        Creates an iterator for accessing all the triangles in
+        the meshgrid.
+        """
 
+        # Returns iterator from list of Triangles
+        return self.trangles.__iter__()
 
 
 
