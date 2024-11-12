@@ -189,7 +189,6 @@ class Triangle():
 
         return c_star
         
-
 class Meshgrid():
     def __init__(
         self,
@@ -232,6 +231,3 @@ class Meshgrid():
 
         # Returns iterator from list of Triangles
         return self.trangles.__iter__()
-
-
-
