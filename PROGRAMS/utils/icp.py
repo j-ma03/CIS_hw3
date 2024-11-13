@@ -31,12 +31,20 @@ class IterativeClosestPoint():
 
         if self.match_mode == Matching.SIMPLE_LINEAR:
             return self._simple_linear_match(pt_cloud, meshgrid)
+        elif self.match_mode == Matching.BATCHED_LINEAR:
+            return self._batched_linear_match(pt_cloud, meshgrid)
 
     def _simple_linear_match(
         self,
         pt_cloud: NDArray[np.float32],
         meshgrid: Meshgrid
     ):
+        """
+        Implementation of a simple linear search ICP algorithm containing 
+        loops over all data points and Triangles to find the closest points 
+        and distances to the meshgrid.
+        """
+
         # Populate a matrix of closest distances to the meshgrid
         min_dist = np.empty(pt_cloud.shape[0])
         min_dist.fill(np.inf)
@@ -60,13 +68,6 @@ class IterativeClosestPoint():
                     # Compute closest distance on the triangle for all candidates
                     dist, pt = triangle.closest_distance_to(point[None,])
 
-                    # print(point)
-                    # print(point[None,])
-
-                    print(triangle)
-                    print(point)
-                    print(dist, pt)
-
                     # Find candidates where distance to triangle is less than
                     # the previously recorded minimum distance
                     if dist[0] < min_dist[i]:
@@ -75,18 +76,28 @@ class IterativeClosestPoint():
                         min_dist[i] = dist[0]
 
         return closest_pt, min_dist
-
+    
     def _batched_linear_match(
         self,
         pt_cloud: NDArray[np.float32],
         meshgrid: Meshgrid
     ):
+        """
+        Implementation of a fast vectorized linear search ICP algorithm
+        containing a only single loop over all Triangles in the meshgrid.
+        Closest points and distances for all data points are updated at once 
+        for each Triangle.
+        """
+
         # Populate a matrix of closest distances to the meshgrid
         min_dist = np.empty(pt_cloud.shape[0])
         min_dist.fill(np.inf)
 
         # Populate a matrix of closest points on the meshgrid
         closest_pt = np.zeros_like(pt_cloud)
+
+        # Stack all points to manage them together
+        pt_cloud_expanded = pt_cloud.reshape(-1, 3)
 
         # Iterate through all the triangles in the meshgrid
         for triangle in meshgrid:
@@ -95,29 +106,32 @@ class IterativeClosestPoint():
 
             # Extend the bounding box by a margin determined by the
             # current minimum distance from each point
-            box.min_xyz = box.min_xyz.reshape(1, 3)
-            box.min_xyz -= np.repeat(min_dist.reshape(-1, 1), 3, axis=1)
+            expanded_min = box.min_xyz.reshape(1, 3) - min_dist.reshape(-1, 1)
+            expanded_max = box.max_xyz.reshape(1, 3) + min_dist.reshape(-1, 1)
 
-            box.max_xyz = box.max_xyz.reshape(1, 3)
-            box.max_xyz += np.repeat(min_dist.reshape(-1, 1), 3, axis=1)
+            # Identify candidate points within the bounding box
+            candidates = np.all((pt_cloud_expanded >= expanded_min) & \
+                                (pt_cloud_expanded <= expanded_max), axis=1)
 
             # Check if there are any candidates to consider
-            candidates = box.contains(pt_cloud)
-
             if candidates.any():
                 # Compute closest distance on the triangle for all candidates
-                dist, pt = triangle.closest_distance_to(pt_cloud[candidates])
+                candidate_points = pt_cloud_expanded[candidates]
+                dist, pt = triangle.closest_distance_to(candidate_points)
 
                 # Find candidates where distance to triangle is less than
                 # the previously recorded minimum distance
-                new_mins = dist < min_dist[candidates]
+                closer_mask = dist < min_dist[candidates]
+
+                # Select indices where new distances are closer from candidate indices
+                indices = np.where(candidates)[0]
+                closer_indices = indices[closer_mask]
 
                 # Update the closest point and minimum distance
-                closest_pt[candidates][new_mins] = pt[new_mins]
-                min_dist[candidates][new_mins] = dist[new_mins]
+                min_dist[closer_indices] = dist[closer_mask]
+                closest_pt[closer_indices] = pt[closer_mask]
 
         return closest_pt, min_dist
-                
-
+    
     def _kd_match(self):
         raise NotImplementedError
