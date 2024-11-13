@@ -5,24 +5,24 @@ from typing import List, Tuple, Iterator
 class BoundingBox():
     def __init__(
         self,
-        top_left: NDArray[np.float32],
-        bottom_right: NDArray[np.float32]
+        min_xyz: NDArray[np.float32],
+        max_xyz: NDArray[np.float32]
     ):
         """
-        Stores a bounding box by its top-left and bottom-right corners.
+        Stores a bounding box by its minimum and maximum (x, y, z) corners.
         """
 
         # Top-left coordinate should be a 3D vector of (x, y, z) coordinates
-        if len(top_left.shape) != 1 or top_left.shape[0] != 3:
-            raise ValueError('Top-left coordinate should be a 3D vector of (x, y, z) coordinates!')
+        if len(min_xyz.shape) != 1 or min_xyz.shape[0] != 3:
+            raise ValueError('Minimum corner coordinate should be a 3D vector of (x, y, z) coordinates!')
         
         # Bottom-left coordinate should be a 3D vector of (x, y, z) coordinates
-        if len(bottom_right.shape) != 1 or bottom_right.shape[0] != 3:
-            raise ValueError('Bottom-right coordinate should be a 3D vector of (x, y, z) coordinates!')
+        if len(max_xyz.shape) != 1 or max_xyz.shape[0] != 3:
+            raise ValueError('Maximum corner coordinate should be a 3D vector of (x, y, z) coordinates!')
 
         # Stores the top left and bottom right corners of the bounding box
-        self.top_left: NDArray[np.float32] = top_left
-        self.bottom_right: NDArray[np.float32] = bottom_right
+        self.min_xyz: NDArray[np.float32] = min_xyz
+        self.max_xyz: NDArray[np.float32] = max_xyz
 
     def contains(self, points: NDArray[np.float32]) -> NDArray[np.bool8]:
         """
@@ -36,7 +36,7 @@ class BoundingBox():
         
         # Finds which points are between the minimum and maximum values
         # for each coordinate axis
-        bounds = (self.top_left[None,] <= points) & (points <= self.bottom_right[None,])
+        bounds = (self.min_xyz[None,] <= points) & (points <= self.max_xyz[None,])
         bounds = np.all(bounds, axis=1)
         
         return bounds
@@ -120,72 +120,60 @@ class Triangle():
             self.v3
         ]).T
 
+        # Add an additional row of ones to system to enforce λ + μ + v = 0
+        A = np.concatenate([A, np.ones((1, A.shape[1]))], axis=0)
+        c_points = np.concatenate([points.T, np.ones((1, points.T.shape[1]))], axis=0)
+
         # Solve the least squares problem to get λ, μ, v 
-        b = np.linalg.lstsq(A, points.T, rcond=None)[0]
+        b = np.linalg.lstsq(A, c_points, rcond=None)[0]
 
         # Find the point projected onto the plane of the triangle
-        closest_pt = (A @ b).T
+        closest_pt = (A @ b).T[:,:3]
 
         # Find point that is outside the λ, μ, v constraints
-        λ_constraint = np.nonzero(b[0] < 0)
-        μ_constraint = np.nonzero(b[1] < 0)
-        v_constraint = np.nonzero(b[2] < 0)
+        λ_constraint = b[0] < 0
+        μ_constraint = b[1] < 0
+        v_constraint = b[2] < 0
 
         # Handle the boundary cases where λ < 0
-        closest_pt[λ_constraint] = self._project_on_seg(
-            closest_pt[λ_constraint].reshape(-1, 3), self.v2, self.v3
-        )
+        if λ_constraint.any():
+            closest_pt[λ_constraint] = self._project_on_seg(
+                closest_pt[λ_constraint].reshape(-1, 3), self.v2, self.v3
+            )
 
         # Handle the boundary cases where μ < 0
-        closest_pt[μ_constraint] = self._project_on_seg(
-            closest_pt[μ_constraint].reshape(-1, 3),self.v3, self.v1
-        )
+        if μ_constraint.any():
+            closest_pt[μ_constraint] = self._project_on_seg(
+                closest_pt[μ_constraint].reshape(-1, 3),self.v3, self.v1
+            )
         
         # Handle the boundary cases where v < 0
-        closest_pt[v_constraint] = self._project_on_seg(
-            closest_pt[v_constraint].reshape(-1, 3), self.v1, self.v2
-        )
+        if v_constraint.any():
+            closest_pt[v_constraint] = self._project_on_seg(
+                closest_pt[v_constraint].reshape(-1, 3), self.v1, self.v2
+            )
 
         # Compute closest distance as magnitude of the difference vector
         closest_dist = np.linalg.norm(closest_pt - points, ord=2, axis=1)
 
         return closest_dist, closest_pt
 
-    def _project_on_seg(
-        self,
-        c: NDArray[np.float32],
-        p: NDArray[np.float32],
-        q: NDArray[np.float32]
-    ) -> NDArray[np.float32]:
+    def _project_on_seg(self, c: NDArray[np.float32], p: NDArray[np.float32], q: NDArray[np.float32]) -> NDArray[np.float32]:
         """
-        Given an set of points c as an Nx3 matrix, find the projection
-        of the closest point onto the line segment pq, where p and q are
-        3D vectors of (x, y, z) coordinates.
+        Project points `c` onto the line segment defined by `p` and `q`.
         """
+        # Vector from p to c
+        pc = c - p
+        pq = q - p
 
-        # c should be an Nx3 matrix of points
-        if len(c.shape) != 2 or c.shape[1] != 3:
-            raise ValueError('c should be an Nx3 matrix!')
-        
-        # p should be a 3D vector
-        if len(p.shape) != 1 or p.shape[0] != 3:
-            raise ValueError(f'p should be a 3D vector of (x, y, z) coordinates!')
-        
-        # q should be a 3D vector
-        if len(q.shape) != 1 or q.shape[0] != 3:
-            raise ValueError(f'q should be a 3D vector of (x, y, z) coordinates!')
+        # Compute the scalar projection of pc onto pq
+        λ = np.sum(pc * pq, axis=1) / np.sum(pq * pq)
 
-        # Compute the degree to which segment pc aligns with pc*,
-        # where c* are the points c projected onto pq
-        λ = c.reshape(-1, 3) - p.reshape(1, 3)
-        λ = λ @ (q - p).reshape(3, 1)
+        # Clamp λ to the range [0, 1] to ensure the projection lies on the segment
+        λ = np.clip(λ, 0.0, 1.0)
 
-        # Normalize by the degree which the segment pq aligns with pq
-        λ /= np.dot(q - p, q - p)
-        λ = np.maximum(0.0, np.minimum(λ, 1.0))
-
-        # Compute c*, the projection of c onto pq
-        c_star = p + λ * (q - p)
+        # Compute the projection point
+        c_star = p + λ[:, None] * pq
 
         return c_star
     

@@ -60,12 +60,12 @@ class IterativeClosestPoint():
                     # Compute closest distance on the triangle for all candidates
                     dist, pt = triangle.closest_distance_to(point[None,])
 
-                    print(point)
-                    print(point[None,])
-
-                    # print(triangle)
                     # print(point)
-                    # print(dist, pt[0])
+                    # print(point[None,])
+
+                    print(triangle)
+                    print(point)
+                    print(dist, pt)
 
                     # Find candidates where distance to triangle is less than
                     # the previously recorded minimum distance
