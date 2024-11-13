@@ -14,8 +14,15 @@ class IterativeClosestPoint():
         # Define the algorithm used to find closest points
         self.match_mode: Matching = match_mode
 
-    def __call__(self):
-        pass
+    def __call__(
+        self,
+        pt_cloud: NDArray[np.float32],
+        meshgrid: Meshgrid
+    ):
+        """
+        Runs the full ICP algorithm given a point cloud and meshgrid.
+        """
+        raise NotImplementedError
 
     def match(
         self,
@@ -23,7 +30,8 @@ class IterativeClosestPoint():
         meshgrid: Meshgrid
     ):
         """
-        Finds the closest point pairs given a point cloud and meshgrid
+        Finds the closest point and distance from points on a point cloud 
+        to a triangle meshgrid.
         """
 
         if not isinstance(meshgrid, Meshgrid):
@@ -41,8 +49,8 @@ class IterativeClosestPoint():
     ):
         """
         Implementation of a simple linear search ICP algorithm containing 
-        loops over all data points and Triangles to find the closest points 
-        and distances to the meshgrid.
+        loops over all data points and Triangles to find the closest point 
+        and distance to the meshgrid.
         """
 
         # Populate a matrix of closest distances to the meshgrid
@@ -60,8 +68,7 @@ class IterativeClosestPoint():
 
                 # Extend the bounding box by a margin determined by the
                 # current minimum distance from each point
-                box.min_xyz -= min_dist[i]
-                box.max_xyz += min_dist[i]
+                box.enlarge(min_dist[i])
 
                 # Check if there are any candidates to consider
                 if box.contains(point[None,]):
@@ -85,7 +92,7 @@ class IterativeClosestPoint():
         """
         Implementation of a fast vectorized linear search ICP algorithm
         containing a only single loop over all Triangles in the meshgrid.
-        Closest points and distances for all data points are updated at once 
+        Closest point and distance for all data points are updated at once 
         for each Triangle.
         """
 
@@ -110,7 +117,7 @@ class IterativeClosestPoint():
             expanded_max = box.max_xyz.reshape(1, 3) + min_dist.reshape(-1, 1)
 
             # Identify candidate points within the bounding box
-            candidates = np.all((pt_cloud_expanded >= expanded_min) & \
+            candidates = np.all((expanded_min <= pt_cloud_expanded) & \
                                 (pt_cloud_expanded <= expanded_max), axis=1)
 
             # Check if there are any candidates to consider

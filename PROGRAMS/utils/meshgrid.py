@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import List, Tuple, Iterator
+from typing import List, Tuple, Iterator, Union
 
 """
 Code created by Edmund Sumpena and Jayden Ma
@@ -44,6 +44,24 @@ class BoundingBox():
         bounds = np.all(bounds, axis=1)
         
         return bounds
+    
+    def enlarge(self, growth: Union[float, NDArray[np.float32]]) -> None:
+        """
+        Increases the size of the bounding box by a constant factor.
+        """
+        
+        if isinstance(growth, np.ndarray):
+            # If growth is vector, then it should be a 3D vector
+            if self.min_xyz.shape != growth.shape or growth.shape[0] != 3 or \
+                len(growth.shape) != 1:
+                raise ValueError(f'Growth factor should be 3D vector but got shape {growth.shape}!')
+            
+        elif not isinstance(growth, float):
+            # Growth should be either float or vector
+            raise ValueError('Growth factor should be a float or 3D vector!')
+
+        self.min_xyz -= growth
+        self.max_xyz += growth
 
     def overlaps(self, bounding_box: 'BoundingBox') -> bool:
         """
@@ -84,6 +102,13 @@ class Triangle():
         self.v1 = v1
         self.v2 = v2
         self.v3 = v3
+
+    def center(self) -> NDArray[np.float32]:
+        """
+        Finds the center point of the triangle based on its vertices.
+        """
+
+        return (self.v1 + self.v2 + self.v3) / 3.0
 
     def box(self) -> BoundingBox:
         """
