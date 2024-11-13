@@ -76,7 +76,9 @@ class TestClosestPoint(unittest.TestCase):
         n = np.cross(v2 - v1, v3 - v1)
         n = n / np.linalg.norm(n)
         
-
+class TestBoundingBoxContains(unittest.TestCase):
+    def test_contains(self):
+        pass
 
 
 
@@ -101,3 +103,6 @@ class TestClosestPoint(unittest.TestCase):
 #         self.assertEqual(dl.N_markers, 4)
 #         self.assertEqual(dl.markers.shape, (4, 3))
 #         self.assertEqual(dl.tip.shape, (1, 3))
+
+if __name__ == '__main__':
+    unittest.main()
