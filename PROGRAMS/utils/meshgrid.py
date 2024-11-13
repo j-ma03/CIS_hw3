@@ -100,7 +100,6 @@ class Triangle():
         self,
         points: NDArray[np.float32]
     ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
-        
         """
         Computes the closest distance from each point in an Nx3 matrix
         to the triangle by solving a constrained least-squares problem.
