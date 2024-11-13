@@ -230,8 +230,6 @@ class Meshgrid():
             # Extract the vertices as (x, y, z) coordinates
             v1, v2, v3 = self.vertices[self.triangle_indices[i]]
 
-            # print(self.triangle_indices[i])
-
             self.trangles.append(
                 Triangle(v1, v2, v3)
             )
