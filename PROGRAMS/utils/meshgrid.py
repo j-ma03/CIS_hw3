@@ -2,6 +2,10 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import List, Tuple, Iterator
 
+"""
+Code created by Edmund Sumpena and Jayden Ma
+"""
+
 class BoundingBox():
     def __init__(
         self,
