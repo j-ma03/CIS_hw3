@@ -96,7 +96,11 @@ class Triangle():
 
         return BoundingBox(top_left, bottom_right)
 
-    def closest_distance_to(self, points: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def closest_distance_to(
+        self,
+        points: NDArray[np.float32]
+    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
+        
         """
         Computes the closest distance from each point in an Nx3 matrix
         to the triangle by solving a constrained least-squares problem.
