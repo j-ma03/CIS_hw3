@@ -52,8 +52,8 @@ class IterativeClosestPoint():
 
                 # Extend the bounding box by a margin determined by the
                 # current minimum distance from each point
-                box.top_left -= min_dist[i]
-                box.bottom_right += min_dist[i]
+                box.min_xyz -= min_dist[i]
+                box.max_xyz += min_dist[i]
 
                 # Check if there are any candidates to consider
                 if box.contains(point[None,]):
@@ -95,11 +95,11 @@ class IterativeClosestPoint():
 
             # Extend the bounding box by a margin determined by the
             # current minimum distance from each point
-            box.top_left = box.top_left.reshape(1, 3)
-            box.top_left -= np.repeat(min_dist.reshape(-1, 1), 3, axis=1)
+            box.min_xyz = box.min_xyz.reshape(1, 3)
+            box.min_xyz -= np.repeat(min_dist.reshape(-1, 1), 3, axis=1)
 
-            box.bottom_right = box.bottom_right.reshape(1, 3)
-            box.bottom_right += np.repeat(min_dist.reshape(-1, 1), 3, axis=1)
+            box.max_xyz = box.max_xyz.reshape(1, 3)
+            box.max_xyz += np.repeat(min_dist.reshape(-1, 1), 3, axis=1)
 
             # Check if there are any candidates to consider
             candidates = box.contains(pt_cloud)

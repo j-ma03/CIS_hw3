@@ -176,6 +176,62 @@ class Triangle():
         c_star = p + λ[:, None] * pq
 
         return c_star
+
+    def _project_to_segment(self, p, a, b):
+        """Projects point p onto the line segment ab, and returns the closest point on the segment."""
+        ab = b - a
+        t = np.dot(p - a, ab) / np.dot(ab, ab)
+        t = np.clip(t, 0, 1)
+        return a + t * ab
+
+    def _closest_point_on_triangle(self, p):
+        """Finds the closest point on the triangle to the point p."""
+        # Calculate vectors for the triangle edges
+        ab = self.v2 - self.v1
+        ac = self.v3 - self.v1
+        ap = p - self.v1
+
+        # Compute dot products
+        d1 = np.dot(ab, ap)
+        d2 = np.dot(ac, ap)
+        d3 = np.dot(ab, ab)
+        d4 = np.dot(ac, ac)
+        d5 = np.dot(ab, ac)
+        d6 = np.dot(ap, ab)
+        
+        # Calculate the determinant
+        denom = d3 * d4 - d5 * d5
+        
+        if denom == 0:
+            # If triangle is degenerate, return one of the vertices as the closest point
+            return self.v1
+
+        # Calculate barycentric coordinates
+        v = (d4 * d6 - d5 * d2) / denom
+        w = (d3 * d2 - d5 * d6) / denom
+        u = 1 - v - w
+
+        # If the point is inside the triangle, use barycentric interpolation
+        if 0 <= u <= 1 and 0 <= v <= 1 and 0 <= w <= 1:
+            return u * self.v1 + v * self.v2 + w * self.v3
+
+        # Otherwise, project onto the triangle's edges or vertices
+        closest_points = [
+            self._project_to_segment(p, self.v1, self.v2),
+            self._project_to_segment(p, self.v2, self.v3),
+            self._project_to_segment(p, self.v3, self.v1)
+        ]
+
+        # Find the closest point among the projections
+        distances = [np.linalg.norm(p - cp) for cp in closest_points]
+        return closest_points[np.argmin(distances)]
+
+    def closest_distance_to(self, points):
+        """Computes closest distance and point on triangle for each input point."""
+        closest_points = np.array([self._closest_point_on_triangle(p) for p in points])
+        distances = np.linalg.norm(points - closest_points, axis=1)
+        return distances, closest_points
+
     
     def __repr__(self) -> str:
         """
