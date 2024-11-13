@@ -58,6 +58,9 @@ class Surfaceloader():
         for i in range(N_vertices + 1, N_vertices + N_triangles + 1):
             triangles[i - N_vertices - 1] = list(map(int, lines[i].strip().split()))
 
+        # Remove the extra elements present in the raw data
+        triangles = triangles[1:,:3]
+
         return Surfaceloader(N_vertices, N_triangles, vertices, triangles)
 
     # Reads the data file's metadata from dataframe

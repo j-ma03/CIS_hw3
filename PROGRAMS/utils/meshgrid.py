@@ -99,7 +99,7 @@ class Triangle():
     def closest_distance_to(
         self,
         points: NDArray[np.float32]
-    ) -> Tuple[NDArray[np.float32]]:
+    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
         Computes the closest distance from each point in an Nx3 matrix
         to the triangle by solving a constrained least-squares problem.
@@ -188,6 +188,14 @@ class Triangle():
         c_star = p + λ * (q - p)
 
         return c_star
+    
+    def __repr__(self) -> str:
+        """
+        Define Triangle object as a string representation
+        """
+
+        # Print out triangle vertices as string
+        return str((self.v1, self.v2, self.v3))
         
 class Meshgrid():
     def __init__(
@@ -219,8 +227,13 @@ class Meshgrid():
 
         # Construct Triangles and add them to the list
         for i in range(self.triangle_indices.shape[0]):
+            # Extract the vertices as (x, y, z) coordinates
+            v1, v2, v3 = self.vertices[self.triangle_indices[i]]
+
+            # print(self.triangle_indices[i])
+
             self.trangles.append(
-                Triangle(*self.triangle_indices[i])
+                Triangle(v1, v2, v3)
             )
 
     def __iter__(self) -> Iterator[Triangle]:
