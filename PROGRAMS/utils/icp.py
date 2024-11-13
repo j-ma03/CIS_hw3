@@ -2,7 +2,8 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Tuple, Union
 from enum import Enum
-from utils.meshgrid import Meshgrid
+from utils.meshgrid import Meshgrid, BoundingBox
+from utils.octree import Octree
 
 class Matching(Enum):
     SIMPLE_LINEAR = 1
@@ -46,7 +47,7 @@ class IterativeClosestPoint():
         self,
         pt_cloud: NDArray[np.float32],
         meshgrid: Meshgrid
-    ):
+    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
         Implementation of a simple linear search ICP algorithm containing 
         loops over all data points and Triangles to find the closest point 
@@ -60,7 +61,7 @@ class IterativeClosestPoint():
         # Populate a matrix of closest points on the meshgrid
         closest_pt = np.zeros_like(pt_cloud)
 
-        # Iterate through all the triangles in the meshgrid
+        # Iterate through all the points and triangles in the meshgrid
         for i, point in enumerate(pt_cloud):
             for triangle in meshgrid:
                 # Extract the bounding box of the triangle
@@ -88,7 +89,7 @@ class IterativeClosestPoint():
         self,
         pt_cloud: NDArray[np.float32],
         meshgrid: Meshgrid
-    ):
+    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
         Implementation of a fast vectorized linear search ICP algorithm
         containing a only single loop over all Triangles in the meshgrid.
@@ -140,5 +141,38 @@ class IterativeClosestPoint():
 
         return closest_pt, min_dist
     
-    def _kd_match(self):
-        raise NotImplementedError
+    def _kd_match(
+        self,
+        pt_cloud: NDArray[np.float32],
+        meshgrid: Meshgrid,
+        tree: Octree = None,
+        closest_pt: NDArray[np.float32] = None,
+        min_dist: NDArray[np.float32] = None
+    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
+        """
+        Implementation of 
+        """
+
+        if closest_pt is None:
+            # Populate a matrix of closest distances to the meshgrid
+            min_dist = np.empty(pt_cloud.shape[0])
+            min_dist.fill(np.inf)
+
+        if min_dist is None:
+            # Populate a matrix of closest points on the meshgrid
+            closest_pt = np.zeros_like(pt_cloud)
+
+        if tree is None:
+            # Create a new tree containing triangles from the meshgrid
+            tree = Octree(meshgrid.trangles)
+
+        if tree.num_elements == 0:
+            return closest_pt, min_dist
+
+        # Iterate through all the points and triangles in the meshgrid
+        for i, point in enumerate(pt_cloud):
+            for triangle in meshgrid:
+                # Extract the bounding box of the triangle
+                box = triangle.box()
+
+        # if tree.have_subtrees:
