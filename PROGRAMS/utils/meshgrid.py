@@ -47,8 +47,8 @@ class BoundingBox():
         """
 
         # Checks if the x-axis, y-axis, and z-axis overlaps
-        if (self.bottom_right < bounding_box.top_left).any() or \
-            (bounding_box.bottom_right < self.top_left).any():
+        if (self.min_xyz < bounding_box.max_xyz).any() or \
+            (bounding_box.min_xyz < self.max_xyz).any():
             # One of the axes do not overlap
             return False
         
