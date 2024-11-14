@@ -247,48 +247,6 @@ class IterativeClosestPoint():
 
         return closest_pt, min_dist
     
-    """
-    def _simple_search_octree(
-        self,
-        point: NDArray[np.float32],
-        tree: Octree,
-        closest_pt: NDArray[np.float32],
-        min_dist: float
-    ) -> Tuple[NDArray[np.float32], float]:  # Note: returning a single float for min_dist
-
-        # Get the bounding box of the tree and enlarge it by min_dist
-        box = tree.box()
-        if box:
-            box.enlarge(min_dist)
-
-            # Stop if point is outside the enlarged bounding box
-            if not box.contains(point[None,]):
-                return closest_pt, min_dist
-        
-        # If this is a leaf node, compute closest distance for each triangle
-        if not tree.have_subtrees:
-            for triangle in tree.elements:
-                dist, pt = triangle.closest_distance_to(point[None,])
-                if dist[0] < min_dist:
-                    # Update if closer point is found
-                    closest_pt = pt[0]
-                    min_dist = dist[0]
-            return closest_pt, min_dist
-
-        # Recursive case: process each subtree and update only if closer point is found
-        for subtree in tree:
-            new_closest_pt, new_min_dist = self._simple_search_octree(
-                point, subtree, closest_pt, min_dist
-            )
-            if new_min_dist < min_dist:
-                # Update if a closer point was found in the subtree
-                closest_pt = new_closest_pt
-                min_dist = new_min_dist
-
-        return closest_pt, min_dist
-    """
-
-    
     def _vectorized_octree_match(
         self,
         pt_cloud: NDArray[np.float32],
