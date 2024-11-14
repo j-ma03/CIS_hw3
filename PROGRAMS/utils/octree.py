@@ -16,21 +16,26 @@ class Octree:
         self.num_elements: int = len(elements)
 
         # Save bounding box of the triangle centers and compute 
-        self.bb: BoundingBox = self.get_bounding_box()
+        self.bb: BoundingBox = self.box()
         self.center: NDArray[np.float32] = (self.bb.min_xyz + self.bb.max_xyz) / 2.0
         self.have_subtrees: bool = False
-        self.subtrees: bool = None
+        self.subtrees: List[Octree] = None
 
         # Build subtrees if necessary
         self.construct_subtrees(min_count, min_diag)
 
-    def get_bounding_box(self) -> BoundingBox:
+    def box(self) -> BoundingBox:
         """
         Computes the bounding box of the Triangle center points.
         """
 
         # Compute centers and find minimum and maximum corners
         centers = np.array([ele.center() for ele in self.elements])
+
+        # No bounding box if there are no elements in tree
+        if centers.size == 0:
+            return None
+        
         box = BoundingBox(np.min(centers, axis=0), np.max(centers, axis=0))
 
         return box
@@ -58,11 +63,11 @@ class Octree:
         partitions = self.split_sort(self.center)
 
         # Construct subtrees for each partition
-        self.subtrees = [ Octree(partitions[k]) for k in partitions.keys() ]
+        self.subtrees = [ Octree(partitions[k]) for k in partitions if len(partitions[k]) > 0 ]
     
     def split_sort(self, splitting_point: NDArray[np.float32]) -> Dict[List[bool], int]:
         """
-        Split the elements into 8 regions based on comparison with the splitting point.
+        Split the elements into octants based on comparison with the splitting point.
         This method updates the nnn, npn, etc., counts for each octant.
         """
 
@@ -75,16 +80,15 @@ class Octree:
             center = ele.center()
 
             # Add element to the respective parititons
-            quad = (center >= splitting_point).tolist()
-            partitions[quad].append(ele)
+            octant = (center >= splitting_point).tolist()
+            partitions[tuple(octant)].append(ele)
 
         return partitions
-
-
+    
     def create_partitions(self) -> Dict[List[bool], List[Triangle]]:
         """
         Creates eight partitions for the Octree as a Dictionary, which 
-        contains the 8 quadrants represented by a 3D list of booleans.
+        contains the octants represented by a 3D list of booleans.
         """
 
         partitions = {}
@@ -94,7 +98,7 @@ class Octree:
         for x in [True, False]:
             for y in [True, False]:
                 for z in [True, False]:
-                    partitions[[x, y, z]] = []
+                    partitions[(x, y, z)] = []
 
         return partitions
     

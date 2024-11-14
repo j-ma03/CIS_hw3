@@ -264,14 +264,14 @@ class Meshgrid():
         self.triangle_indices: NDArray[np.float32] = triangle_indices
 
         # Save triangles as a list of Triangle objects
-        self.trangles: List[Triangle] = []
+        self.triangles: List[Triangle] = []
 
         # Construct Triangles and add them to the list
         for i in range(self.triangle_indices.shape[0]):
             # Extract the vertices as (x, y, z) coordinates
             v1, v2, v3 = self.vertices[self.triangle_indices[i]]
 
-            self.trangles.append(
+            self.triangles.append(
                 Triangle(v1, v2, v3)
             )
 
