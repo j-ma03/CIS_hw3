@@ -35,11 +35,17 @@
         <mxCell id="wVyfjz5EjAHBI-jj_Xb--3" value="_vectorized_linear_match()" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="385" y="240" width="170" height="80" as="geometry" />
         </mxCell>
+        <mxCell id="wVyfjz5EjAHBI-jj_Xb--11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="wVyfjz5EjAHBI-jj_Xb--4" target="wVyfjz5EjAHBI-jj_Xb--10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="wVyfjz5EjAHBI-jj_Xb--4" value="_octree_match()" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="570" y="240" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="wVyfjz5EjAHBI-jj_Xb--5" value="_simple_linear_match()" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="220" y="240" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="wVyfjz5EjAHBI-jj_Xb--10" value="_search_octree()" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="350" width="120" height="80" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
