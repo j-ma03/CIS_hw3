@@ -3,6 +3,10 @@ from numpy.typing import NDArray
 from typing import List, Tuple, Dict, Iterator
 from utils.meshgrid import Triangle, BoundingBox
 
+"""
+Code created by Edmund Sumpena and Jayden Ma
+"""
+
 class Octree:
     def __init__(
         self,
@@ -10,21 +14,40 @@ class Octree:
         min_count: int = 1,
         min_diag: float = 0.1
     ) -> None:
+        """
+        Octree class is based on Dr. Taylor's lecture on finding
+        point pairs:
+
+        https://ciis.lcsr.jhu.edu/lib/exe/fetch.php?media=courses:455-655:lectures:finding_point-pairs.pdf
+        """
         
         # Save Triangle elements
         self.elements: List[Triangle] = elements
         self.num_elements: int = len(elements)
 
+        # Compute centers and find minimum and maximum corners
+        self.min_xyz: NDArray[np.float32] = []
+        self.max_xyz: NDArray[np.float32] = []
+
+        for i in range(len(self.elements)):
+            box = self.elements[i].box()
+            self.min_xyz.append(box.min_xyz)
+            self.max_xyz.append(box.max_xyz)
+
+        self.min_xyz = np.array(self.min_xyz)
+        self.max_xyz = np.array(self.max_xyz)
+
         # Save bounding box of the triangle centers and compute 
         self.bb: BoundingBox = self.box()
-        self.center: NDArray[np.float32] = (self.bb.min_xyz + self.bb.max_xyz) / 2.0
+        self.cb: BoundingBox = self.centroid_box()
+        self.center: NDArray[np.float32] = (self.cb.min_xyz + self.cb.max_xyz) / 2.0
         self.have_subtrees: bool = False
         self.subtrees: List[Octree] = None
 
         # Build subtrees if necessary
         self.construct_subtrees(min_count, min_diag)
 
-    def box(self) -> BoundingBox:
+    def centroid_box(self) -> BoundingBox:
         """
         Computes the bounding box of the Triangle center points.
         """
@@ -37,6 +60,19 @@ class Octree:
             return None
         
         box = BoundingBox(np.min(centers, axis=0), np.max(centers, axis=0))
+
+        return box
+    
+    def box(self) -> BoundingBox:
+        """
+        Computes the bounding box of the Triangle inner and outer corners.
+        """
+
+        # No bounding box if there are no elements in tree
+        if self.min_xyz.size == 0 or self.max_xyz.size == 0:
+            return None
+        
+        box = BoundingBox(np.min(self.min_xyz, axis=0), np.max(self.max_xyz, axis=0))
 
         return box
     
@@ -84,7 +120,7 @@ class Octree:
             partitions[tuple(octant)].append(ele)
 
         return partitions
-    
+
     def create_partitions(self) -> Dict[List[bool], List[Triangle]]:
         """
         Creates eight partitions for the Octree as a Dictionary, which 
@@ -110,5 +146,4 @@ class Octree:
 
         # Returns iterator from list of subtrees
         return self.subtrees.__iter__()
-
 
