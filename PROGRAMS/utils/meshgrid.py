@@ -282,4 +282,4 @@ class Meshgrid():
         """
 
         # Returns iterator from list of Triangles
-        return self.trangles.__iter__()
+        return self.triangles.__iter__()
