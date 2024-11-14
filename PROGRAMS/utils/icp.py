@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import Tuple, Union
+from typing import Tuple
 from enum import Enum
-from utils.meshgrid import Meshgrid, BoundingBox
+from utils.meshgrid import Meshgrid
 from utils.octree import Octree
 
 """

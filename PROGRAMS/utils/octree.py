@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import List, Tuple, Dict, Iterator
+from typing import List, Dict, Iterator
 from utils.meshgrid import Triangle, BoundingBox
 
 """
