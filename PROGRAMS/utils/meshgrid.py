@@ -1,6 +1,10 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import List, Tuple, Iterator
+from typing import List, Tuple, Iterator, Union
+
+"""
+Code created by Edmund Sumpena and Jayden Ma
+"""
 
 class BoundingBox():
     def __init__(
@@ -36,10 +40,28 @@ class BoundingBox():
         
         # Finds which points are between the minimum and maximum values
         # for each coordinate axis
-        bounds = (self.min_xyz[None,] <= points) & (points <= self.max_xyz[None,])
+        bounds = (self.min_xyz <= points) & (points <= self.max_xyz)
         bounds = np.all(bounds, axis=1)
         
         return bounds
+    
+    def enlarge(self, growth: Union[float, NDArray[np.float32]]) -> None:
+        """
+        Increases the size of the bounding box by a constant factor.
+        """
+        
+        if isinstance(growth, np.ndarray):
+            # If growth is vector, then it should be a 3D vector
+            if self.min_xyz.shape != growth.shape or growth.shape[0] != 3 or \
+                len(growth.shape) != 1:
+                raise ValueError(f'Growth factor should be 3D vector but got shape {growth.shape}!')
+            
+        elif not isinstance(growth, float):
+            # Growth should be either float or vector
+            raise ValueError('Growth factor should be a float or 3D vector!')
+
+        self.min_xyz -= growth
+        self.max_xyz += growth
 
     def overlaps(self, bounding_box: 'BoundingBox') -> bool:
         """
@@ -81,6 +103,13 @@ class Triangle():
         self.v2 = v2
         self.v3 = v3
 
+    def center(self) -> NDArray[np.float32]:
+        """
+        Finds the center point of the triangle based on its vertices.
+        """
+
+        return (self.v1 + self.v2 + self.v3) / 3.0
+
     def box(self) -> BoundingBox:
         """
         Computes a bounding box for the triangle based on its vertices.
@@ -111,24 +140,29 @@ class Triangle():
         if len(points.shape) != 2 or points.shape[1] != 3:
             raise ValueError('Points should be an Nx3 matrix!')
 
-        # Construct 3x3 matrix of vertices in Barycentric form
+        # Construct 3x2 matrix of edge vectors in Barycentric form
         # Approach based on Dr. Taylor's slides on finding closest points:
         # https://ciis.lcsr.jhu.edu/lib/exe/fetch.php?media=courses:455-655:lectures:finding_point-pairs.pdf
-        A = np.array([
+        edge1 = self.v2 - self.v1
+        edge2 = self.v3 - self.v1
+        A = np.stack([edge1, edge2], axis=1)
+
+        # Compute vector b for all points (point - v1)
+        c_points = (points - self.v1).T
+
+        # Solve the least squares problem and get Nx3 matrix of v, λ, μ
+        b = np.linalg.lstsq(A, c_points, rcond=None)[0]
+        b = np.concatenate([(1. - b[0] - b[1]).reshape(1, -1), b], axis=0)
+
+        # Construct 3x3 matrix of vertices
+        M = np.array([
             self.v1,
             self.v2,
             self.v3
         ]).T
 
-        # Add an additional row of ones to system to enforce λ + μ + v = 0
-        A = np.concatenate([A, np.ones((1, A.shape[1]))], axis=0)
-        c_points = np.concatenate([points.T, np.ones((1, points.T.shape[1]))], axis=0)
-
-        # Solve the least squares problem to get λ, μ, v 
-        b = np.linalg.lstsq(A, c_points, rcond=None)[0]
-
         # Find the point projected onto the plane of the triangle
-        closest_pt = (A @ b).T[:,:3]
+        closest_pt = (M @ b).T[:,:3]
 
         # Find point that is outside the λ, μ, v constraints
         λ_constraint = b[0] < 0
@@ -138,100 +172,63 @@ class Triangle():
         # Handle the boundary cases where λ < 0
         if λ_constraint.any():
             closest_pt[λ_constraint] = self._project_on_seg(
-                closest_pt[λ_constraint].reshape(-1, 3), self.v2, self.v3
+                points[λ_constraint].reshape(-1, 3), self.v2, self.v3
             )
 
         # Handle the boundary cases where μ < 0
         if μ_constraint.any():
             closest_pt[μ_constraint] = self._project_on_seg(
-                closest_pt[μ_constraint].reshape(-1, 3),self.v3, self.v1
+                points[μ_constraint].reshape(-1, 3),self.v3, self.v1
             )
         
         # Handle the boundary cases where v < 0
         if v_constraint.any():
             closest_pt[v_constraint] = self._project_on_seg(
-                closest_pt[v_constraint].reshape(-1, 3), self.v1, self.v2
+                points[v_constraint].reshape(-1, 3), self.v1, self.v2
             )
 
-        # Compute closest distance as magnitude of the difference vector
-        closest_dist = np.linalg.norm(closest_pt - points, ord=2, axis=1)
+        # Calculate distances from points to their closest points on the triangle
+        distances = np.linalg.norm(closest_pt - points, axis=1)
 
-        return closest_dist, closest_pt
+        return distances, closest_pt
 
-    def _project_on_seg(self, c: NDArray[np.float32], p: NDArray[np.float32], q: NDArray[np.float32]) -> NDArray[np.float32]:
+    def _project_on_seg(
+        self,
+        c: NDArray[np.float32],
+        p: NDArray[np.float32],
+        q: NDArray[np.float32]
+    ) -> NDArray[np.float32]:
         """
-        Project points `c` onto the line segment defined by `p` and `q`.
+        Given an set of points c as an Nx3 matrix, find the projection
+        of the closest point onto the line segment pq, where p and q are
+        3D vectors of (x, y, z) coordinates.
         """
-        # Vector from p to c
-        pc = c - p
-        pq = q - p
 
-        # Compute the scalar projection of pc onto pq
-        λ = np.sum(pc * pq, axis=1) / np.sum(pq * pq)
+        # c should be an Nx3 matrix of points
+        if len(c.shape) != 2 or c.shape[1] != 3:
+            raise ValueError('c should be an Nx3 matrix!')
+        
+        # p should be a 3D vector
+        if len(p.shape) != 1 or p.shape[0] != 3:
+            raise ValueError(f'p should be a 3D vector of (x, y, z) coordinates!')
+        
+        # q should be a 3D vector
+        if len(q.shape) != 1 or q.shape[0] != 3:
+            raise ValueError(f'q should be a 3D vector of (x, y, z) coordinates!')
 
-        # Clamp λ to the range [0, 1] to ensure the projection lies on the segment
-        λ = np.clip(λ, 0.0, 1.0)
+        # Compute the degree to which segment pc aligns with pc*,
+        # where c* are the points c projected onto pq
+        λ = c.reshape(-1, 3) - p.reshape(1, 3)
+        λ = λ @ (q - p).reshape(3, 1)
 
-        # Compute the projection point
-        c_star = p + λ[:, None] * pq
+        # Normalize by the degree which the segment pq aligns with pq
+        λ /= np.dot(q - p, q - p)
+        λ = np.maximum(0.0, np.minimum(λ, 1.0))
+
+        # Compute c*, the projection of c onto pq
+        c_star = p + λ * (q - p)
 
         return c_star
-
-    def _project_to_segment(self, p, a, b):
-        """Projects point p onto the line segment ab, and returns the closest point on the segment."""
-        ab = b - a
-        t = np.dot(p - a, ab) / np.dot(ab, ab)
-        t = np.clip(t, 0, 1)
-        return a + t * ab
-
-    def _closest_point_on_triangle(self, p):
-        """Finds the closest point on the triangle to the point p."""
-        # Calculate vectors for the triangle edges
-        ab = self.v2 - self.v1
-        ac = self.v3 - self.v1
-        ap = p - self.v1
-
-        # Compute dot products
-        d1 = np.dot(ab, ap)
-        d2 = np.dot(ac, ap)
-        d3 = np.dot(ab, ab)
-        d4 = np.dot(ac, ac)
-        d5 = np.dot(ab, ac)
-        d6 = np.dot(ap, ab)
-        
-        # Calculate the determinant
-        denom = d3 * d4 - d5 * d5
-        
-        if denom == 0:
-            # If triangle is degenerate, return one of the vertices as the closest point
-            return self.v1
-
-        # Calculate barycentric coordinates
-        v = (d4 * d6 - d5 * d2) / denom
-        w = (d3 * d2 - d5 * d6) / denom
-        u = 1 - v - w
-
-        # If the point is inside the triangle, use barycentric interpolation
-        if 0 <= u <= 1 and 0 <= v <= 1 and 0 <= w <= 1:
-            return u * self.v1 + v * self.v2 + w * self.v3
-
-        # Otherwise, project onto the triangle's edges or vertices
-        closest_points = [
-            self._project_to_segment(p, self.v1, self.v2),
-            self._project_to_segment(p, self.v2, self.v3),
-            self._project_to_segment(p, self.v3, self.v1)
-        ]
-
-        # Find the closest point among the projections
-        distances = [np.linalg.norm(p - cp) for cp in closest_points]
-        return closest_points[np.argmin(distances)]
-
-    def closest_distance_to(self, points):
-        """Computes closest distance and point on triangle for each input point."""
-        closest_points = np.array([self._closest_point_on_triangle(p) for p in points])
-        distances = np.linalg.norm(points - closest_points, axis=1)
-        return distances, closest_points
-
     
     def __repr__(self) -> str:
         """
@@ -267,14 +264,14 @@ class Meshgrid():
         self.triangle_indices: NDArray[np.float32] = triangle_indices
 
         # Save triangles as a list of Triangle objects
-        self.trangles: List[Triangle] = []
+        self.triangles: List[Triangle] = []
 
         # Construct Triangles and add them to the list
         for i in range(self.triangle_indices.shape[0]):
             # Extract the vertices as (x, y, z) coordinates
             v1, v2, v3 = self.vertices[self.triangle_indices[i]]
 
-            self.trangles.append(
+            self.triangles.append(
                 Triangle(v1, v2, v3)
             )
 
